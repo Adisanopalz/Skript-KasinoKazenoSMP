@@ -1,0 +1,383 @@
+# ========================================================
+# Skript Judol (Gacha/Kasino) untuk Kazeno SMP
+# Versi: V2 OMEGA (UI 5 Baris, Tier Kosmik, Info Panduan)
+# ========================================================
+
+on quit:
+    # Memastikan mesin tidak terkunci jika player tiba-tiba keluar (disconnect)
+    delete {judol::rolling::%player's uuid%}
+
+# =======================================
+# COMMAND UTAMA
+# =======================================
+command /judol:
+    description: Buka menu kasino Kazeno SMP
+    aliases: /gacha, /kasino
+    trigger:
+        # Hapus sisa lock jika ada (untuk keamanan)
+        delete {judol::rolling::%player's uuid%}
+        
+        # Membuat UI inventory dengan ukuran 5 baris
+        set {_gui} to chest inventory with 5 rows named "&c&lKASINO KAZENO"
+        
+        # Dekorasi background menggunakan kaca abu-abu dan hitam
+        loop 45 times:
+            set slot loop-number - 1 of {_gui} to black stained glass pane named "&8-"
+        
+        set slot 10, 11, 12, 13, 14, 15, 16 of {_gui} to gray stained glass pane named "&8-"
+        set slot 28, 29, 30, 31, 32, 33, 34 of {_gui} to gray stained glass pane named "&8-"
+        
+        # Tombol Informasi (Slot 4 - Atas Tengah)
+        set slot 4 of {_gui} to book named "&e&lPANDUAN KASINO" with lore "&7Selamat datang di Kasino Kazeno!" and "&7Pilih mesin gacha di bawah untuk" and "&7menguji keberuntunganmu." and "" and "&c&lPeringatan:" and "&7Kerugian ditanggung sendiri."
+            
+        # Tombol Gacha Harian (Slot 20) - GRATIS
+        set slot 20 of {_gui} to sunflower named "&e&lGACHA HARIAN" with lore "&7Biaya Spin: &aGRATIS!" and "&7Cooldown: &e24 Jam" and "" and "&a&nPeluang Hadiah:" and "&f⚪ Besi &7(10 Iron Ingot)" and "&e🟡 Emas &7(5 Gold Ingot)" and "&b💎 Jackpot &7(1 Diamond Block)"
+            
+        # Tombol Gacha Biasa (Slot 21) - Pakai Diamond
+        set slot 21 of {_gui} to diamond named "&b&lGACHA DIAMOND" with lore "&7Biaya Spin: &b1 Diamond" and "" and "&a&nPeluang Hadiah:" and "&c☠ Zonk &7(Kalah/Diamond Hangus)" and "&e⭐ Balik Modal &7(Dapat 3 Diamond)" and "&6&l🌟 JACKPOT &7(Beliung Hoki + 5 Diamond)"
+        
+        # Tombol Gacha Menengah (Slot 22) - Pakai Emerald
+        set slot 22 of {_gui} to emerald named "&a&lGACHA EMERALD" with lore "&7Biaya Spin: &a5 Emerald" and "" and "&a&nPeluang Hadiah:" and "&c☠ Zonk &7(Kalah/Emerald Hangus)" and "&e⭐ Balik Modal &7(Dapat 12 Emerald)" and "&6&l🌟 JACKPOT &7(Totem Anti Rungkad)"
+        
+        # Tombol Gacha Sultan (Slot 23) - Pakai Netherite
+        set slot 23 of {_gui} to netherite ingot named "&8&lGACHA SULTAN" with lore "&7Biaya Spin: &81 Netherite Ingot" and "" and "&a&nPeluang Hadiah:" and "&c☠ Rungkad &7(Hangus 1 Netherite)" and "&e⭐ Untung Dikit &7(Dapat 2 Netherite Ingot)" and "&d&l🔥 MAXWIN &7(Pedang Kiamat + 10 Diamond Block)"
+        
+        # Tombol Gacha Kosmik (Slot 24) - Pakai Netherite Block (TIER BARU)
+        set slot 24 of {_gui} to netherite block named "&5&lGACHA KOSMIK" with lore "&7Biaya Spin: &51 Netherite Block" and "" and "&a&nPeluang Hadiah:" and "&c☠ Kehampaan &7(Hangus 1 Block)" and "&e⭐ Berkah &7(Dapat 2 Netherite Block)" and "&b💎 Super Jackpot &7(Trident + 32 God Apple)" and "&d&l🌌 OMEGA WIN &7(Mahkota Kazeno + 64 Diamond Block!)"
+        
+        # Statistik Player (Slot 40 - Bawah Tengah)
+        set {_total_spin} to {judol::spin::%player's uuid%}
+        if {_total_spin} is not set:
+            set {_total_spin} to 0
+        set slot 40 of {_gui} to paper named "&a&lStatistik Taruhanmu" with lore "&7Total Spin lu sejauh ini: &e%{_total_spin}% kali" and "&7Semakin sering spin, semakin dekat dengan Maxwin! (Mitos)"
+        
+        # Membuka UI ke player
+        open {_gui} to player
+        play sound "block.chest.open" to player
+
+# =======================================
+# LOGIKA INVENTORY / GACHA
+# =======================================
+on inventory click:
+    if name of event-inventory is "&c&lKASINO KAZENO":
+        cancel event # Mencegah item diambil
+        
+        # Mencegah player klik jika mesin sedang berputar (Animasi)
+        if {judol::rolling::%player's uuid%} is true:
+            stop
+
+        # =======================================
+        # GACHA HARIAN (SLOT 20)
+        # =======================================
+        if index of event-slot is 20:
+            if {judol::daily::%player's uuid%} is set:
+                if difference between {judol::daily::%player's uuid%} and now is less than 24 hours:
+                    set {_sisa} to difference between 24 hours and difference between {judol::daily::%player's uuid%} and now
+                    send "&cLu udah ambil jatah harian! Tunggu &e%{_sisa}% &clagi." to player
+                    play sound "block.note_block.bass" to player
+                    stop
+            
+            set {judol::daily::%player's uuid%} to now
+            set {judol::rolling::%player's uuid%} to true
+            
+            # Animasi Berputar
+            loop 15 times:
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set {_rand} to random element out of iron ingot, gold ingot, diamond, emerald, coal
+                    set slot 20 of current inventory of player to {_rand} named "&e&lMengundi Harian... 🎲"
+                play sound "block.note_block.hat" with pitch 2 to player
+                wait 2 ticks
+                
+            # Hasil
+            set {_gacha} to random integer between 1 and 100
+            if {_gacha} is between 1 and 60:
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 20 of current inventory of player to iron ingot named "&f&lDAPAT BESI!"
+                give 10 iron ingots to player
+                play sound "entity.item.pickup" to player
+            else if {_gacha} is between 61 and 90:
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 20 of current inventory of player to gold ingot named "&e&lDAPAT EMAS!"
+                give 5 gold ingots to player
+                play sound "entity.player.levelup" with pitch 1.5 to player
+            else:
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 20 of current inventory of player to diamond block named "&b&lJACKPOT HARIAN!"
+                give 1 diamond block to player
+                send title "&b&lHOKI HARIAN!" with subtitle "&eDapat 1 Diamond Block gratis!" to player for 3 seconds
+                play sound "ui.toast.challenge_complete" to player
+                
+            wait 2 seconds
+            if name of current inventory of player is "&c&lKASINO KAZENO":
+                set slot 20 of current inventory of player to sunflower named "&e&lGACHA HARIAN" with lore "&7Biaya Spin: &aGRATIS!" and "&7Cooldown: &e24 Jam"
+            delete {judol::rolling::%player's uuid%}
+
+        # =======================================
+        # GACHA DIAMOND (SLOT 21)
+        # =======================================
+        else if index of event-slot is 21:
+            if player has 1 diamond:
+                remove 1 diamond from player's inventory
+                set {judol::rolling::%player's uuid%} to true
+                add 1 to {judol::spin::%player's uuid%}
+                
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 40 of current inventory of player to paper named "&a&lStatistik Taruhanmu" with lore "&7Total Spin lu sejauh ini: &e%{judol::spin::%player's uuid%}% kali"
+                
+                loop 20 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of diamond, emerald, iron ingot, coal, redstone block
+                        set slot 21 of current inventory of player to {_rand} named "&e&lMengundi Diamond... 🎲"
+                    play sound "block.note_block.hat" with pitch 1.5 to player
+                    wait 2 ticks
+                
+                loop 3 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of diamond, emerald, iron ingot, coal, redstone block
+                        set slot 21 of current inventory of player to {_rand} named "&e&lMengundi Diamond... 🎲"
+                    play sound "block.note_block.hat" with pitch 1 to player
+                    wait 5 ticks
+                
+                set {_gacha} to random integer between 1 and 100
+                if {_gacha} is between 1 and 60:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 21 of current inventory of player to barrier named "&c&lZONK!" with lore "&7Diamond lu hangus ngab!"
+                    play sound "entity.villager.no" to player
+                    send "&c&lZONK! &7Diamond lu hangus ngab. Jangan nyerah, ayo depo lagi!" to player
+                    
+                else if {_gacha} is between 61 and 95:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 21 of current inventory of player to diamond named "&a&lMENANG!" with lore "&7Lu dapet 3 Diamond!"
+                    give 3 diamonds to player
+                    play sound "entity.player.levelup" to player
+                    send "&a&lLUMAYAN! &7Lu dapet 3 Diamond!" to player
+                    
+                else if {_gacha} is between 96 and 100:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 21 of current inventory of player to nether star named "&6&lJACKPOT!!!"
+                    give 5 diamonds to player
+                    give 1 diamond pickaxe named "&b&lBeliung Hoki" with lore "&7Hasil jackpot dari Kasino Kazeno!" and "&eItem Langka" to player
+                    send title "&6&lJACKPOT!" with subtitle "&eBeliung Hoki + 5 Diamond!" to player for 3 seconds
+                    play sound "ui.toast.challenge_complete" to player
+                    strike lightning effect at player
+                    broadcast "&8[&c&lKASINO&8] &b%player% &abaru aja dapetin &6&lJACKPOT &adi Gacha Diamond!"
+                    
+                wait 2 seconds
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 21 of current inventory of player to diamond named "&b&lGACHA DIAMOND" with lore "&7Biaya Spin: &b1 Diamond" and "" and "&a&nPeluang Hadiah:" and "&c☠ Zonk &7(Kalah/Diamond Hangus)" and "&e⭐ Balik Modal &7(Dapat 3 Diamond)" and "&6&l🌟 JACKPOT &7(Beliung Hoki + 5 Diamond)"
+                delete {judol::rolling::%player's uuid%}
+            else:
+                send "&cMiskin lu ngab! Lu butuh minimal 1 Diamond di inventory." to player
+                play sound "block.note_block.bass" to player
+
+        # =======================================
+        # GACHA EMERALD (SLOT 22)
+        # =======================================
+        else if index of event-slot is 22:
+            if player has 5 emeralds:
+                remove 5 emeralds from player's inventory
+                set {judol::rolling::%player's uuid%} to true
+                add 1 to {judol::spin::%player's uuid%}
+                
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 40 of current inventory of player to paper named "&a&lStatistik Taruhanmu" with lore "&7Total Spin lu sejauh ini: &e%{judol::spin::%player's uuid%}% kali"
+                
+                loop 20 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of emerald, slime ball, lime dye, green stained glass
+                        set slot 22 of current inventory of player to {_rand} named "&a&lMengundi Emerald... 🎲"
+                    play sound "block.note_block.hat" with pitch 1.7 to player
+                    wait 2 ticks
+                
+                loop 3 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of emerald, slime ball, lime dye, green stained glass
+                        set slot 22 of current inventory of player to {_rand} named "&a&lMengundi Emerald... 🎲"
+                    play sound "block.note_block.hat" with pitch 1 to player
+                    wait 5 ticks
+                
+                set {_gacha_em} to random integer between 1 and 100
+                if {_gacha_em} is between 1 and 65:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 22 of current inventory of player to barrier named "&c&lZONK!" with lore "&7Emerald lu dimakan bandar."
+                    play sound "entity.villager.no" to player
+                    send "&c&lZONK! &7Emerald lu hangus." to player
+                    
+                else if {_gacha_em} is between 66 and 96:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 22 of current inventory of player to emerald block named "&a&lMENANG!" with lore "&7Lu dapet 12 Emerald!"
+                    give 12 emeralds to player
+                    play sound "entity.player.levelup" to player
+                    send "&a&lLUMAYAN! &7Lu dapet 12 Emerald!" to player
+                    
+                else if {_gacha_em} is between 97 and 100:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 22 of current inventory of player to totem of undying named "&6&lJACKPOT!!!"
+                    give 1 totem of undying named "&e&lTotem Anti Rungkad" with lore "&7Menyelamatkanmu dari kebangkrutan nyawa." and "&eItem Langka" to player
+                    send title "&6&lJACKPOT!" with subtitle "&eTotem Anti Rungkad!" to player for 3 seconds
+                    play sound "ui.toast.challenge_complete" to player
+                    strike lightning effect at player
+                    broadcast "&8[&c&lKASINO&8] &b%player% &abaru aja dapetin &6&lJACKPOT &adi Gacha Emerald!"
+                    
+                wait 2 seconds
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 22 of current inventory of player to emerald named "&a&lGACHA EMERALD" with lore "&7Biaya Spin: &a5 Emerald" and "" and "&a&nPeluang Hadiah:" and "&c☠ Zonk &7(Kalah/Emerald Hangus)" and "&e⭐ Balik Modal &7(Dapat 12 Emerald)" and "&6&l🌟 JACKPOT &7(Totem Anti Rungkad)"
+                delete {judol::rolling::%player's uuid%}
+            else:
+                send "&cKagak cukup ngab! Lu butuh minimal 5 Emerald." to player
+                play sound "block.note_block.bass" to player
+
+        # =======================================
+        # GACHA SULTAN (SLOT 23)
+        # =======================================
+        else if index of event-slot is 23:
+            if player has 1 netherite ingot:
+                remove 1 netherite ingot from player's inventory
+                set {judol::rolling::%player's uuid%} to true
+                add 1 to {judol::spin::%player's uuid%}
+                
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 40 of current inventory of player to paper named "&a&lStatistik Taruhanmu" with lore "&7Total Spin lu sejauh ini: &e%{judol::spin::%player's uuid%}% kali"
+                
+                play sound "block.portal.trigger" with pitch 2 to player
+                
+                loop 20 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of netherite ingot, netherite scrap, coal block, obsidian
+                        set slot 23 of current inventory of player to {_rand} named "&d&lMengundi Mesin Sultan... 🔥"
+                    play sound "block.note_block.basedrum" with pitch random number between 1 and 1.5 to player
+                    wait 2 ticks
+                
+                loop 4 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of netherite ingot, netherite scrap, coal block, obsidian
+                        set slot 23 of current inventory of player to {_rand} named "&d&lMengundi Mesin Sultan... 🔥"
+                    play sound "block.note_block.basedrum" with pitch 0.8 to player
+                    wait 6 ticks
+                
+                set {_gacha_sultan} to random integer between 1 and 100
+                if {_gacha_sultan} is between 1 and 70:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 23 of current inventory of player to barrier named "&c&lRUNGKAD!" with lore "&7Aduh 1 Netherite Ingot melayang!"
+                    play sound "entity.ender_dragon.growl" to player
+                    send "&c&lRUNGKAD SULTAN! &7Bandar tersenyum lebar." to player
+                    
+                else if {_gacha_sultan} is between 71 and 97:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 23 of current inventory of player to netherite ingot named "&a&lUNTUNG DIKIT!" with lore "&7Dapat 2 Netherite Ingot."
+                    give 2 netherite ingots to player
+                    play sound "entity.player.levelup" with pitch 0.5 to player
+                    send "&a&lLUMAYAN SULTAN! &7Lu dapet balik 2 Netherite Ingot!" to player
+                    
+                else if {_gacha_sultan} is between 98 and 100:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 23 of current inventory of player to netherite sword named "&d&lMAXWIN!!!"
+                    give 10 diamond blocks to player
+                    give 1 netherite sword named "&d&l🗡 Pedang Kiamat 🗡" with lore "&7Senjata legendaris Kazeno SMP." and "&c[MAXWIN PRIZE]" to player
+                    send title "&d&lMAXWIN!!!" with subtitle "&aPedang Kiamat + 10 Diamond Block!" to player for 5 seconds
+                    play sound "ui.toast.challenge_complete" to player
+                    strike lightning effect at player
+                    wait 5 ticks
+                    strike lightning effect at player
+                    broadcast "&8[&c&lKASINO&8] &d&l🚨 MAXWIN ALERT 🚨"
+                    broadcast "&8[&c&lKASINO&8] &b%player% &abaru aja menghancurkan &eGacha Sultan&a!"
+                    
+                wait 2 seconds
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 23 of current inventory of player to netherite ingot named "&8&lGACHA SULTAN" with lore "&7Biaya Spin: &81 Netherite Ingot" and "" and "&a&nPeluang Hadiah:" and "&c☠ Rungkad &7(Hangus 1 Netherite)" and "&e⭐ Untung Dikit &7(Dapat 2 Netherite Ingot)" and "&d&l🔥 MAXWIN &7(Pedang Kiamat + 10 Diamond Block)"
+                delete {judol::rolling::%player's uuid%}
+            else:
+                send "&cLu kurang kaya buat main di sini! Butuh 1 Netherite Ingot ngab." to player
+                play sound "block.note_block.bass" to player
+
+        # =======================================
+        # GACHA KOSMIK (SLOT 24) - BARU!
+        # =======================================
+        else if index of event-slot is 24:
+            if player has 1 netherite block:
+                remove 1 netherite block from player's inventory
+                set {judol::rolling::%player's uuid%} to true
+                add 1 to {judol::spin::%player's uuid%}
+                
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 40 of current inventory of player to paper named "&a&lStatistik Taruhanmu" with lore "&7Total Spin lu sejauh ini: &e%{judol::spin::%player's uuid%}% kali"
+                
+                play sound "entity.wither.spawn" with pitch 1.5 to player
+                
+                loop 25 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of netherite block, crying obsidian, end crystal, bedrock
+                        set slot 24 of current inventory of player to {_rand} named "&5&lMembuka Ruang Kosmik... 🌌"
+                    play sound "block.beacon.ambient" with pitch random number between 1 and 2 to player
+                    wait 2 ticks
+                
+                loop 5 times:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set {_rand} to random element out of netherite block, crying obsidian, end crystal, bedrock
+                        set slot 24 of current inventory of player to {_rand} named "&5&lMembuka Ruang Kosmik... 🌌"
+                    play sound "block.conduit.activate" with pitch 0.8 to player
+                    wait 8 ticks
+                
+                set {_gacha_kosmik} to random integer between 1 and 100
+                if {_gacha_kosmik} is between 1 and 35:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 24 of current inventory of player to barrier named "&c&lKEHAMPAAN!" with lore "&7Netherite Block lenyap ditelan lubang hitam!"
+                    play sound "entity.wither.death" to player
+                    send "&c&lKEHAMPAAN! &7Satu Block Netherite lenyap begitu saja." to player
+                    
+                else if {_gacha_kosmik} is between 36 and 80:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 24 of current inventory of player to netherite block named "&a&lBERKAH DEWA!" with lore "&7Dapat 2 Netherite Block."
+                    give 2 netherite blocks to player
+                    play sound "entity.player.levelup" with pitch 0.5 to player
+                    send "&a&lBERKAH SULTAN! &7Lu dapet 2 Netherite Block!" to player
+                    
+                else if {_gacha_kosmik} is between 81 and 95:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 24 of current inventory of player to trident named "&b&lSUPER JACKPOT!"
+                    give 1 trident to player
+                    give 32 enchanted golden apples to player
+                    send title "&b&lSUPER JACKPOT!" with subtitle "&aTrident + 32 God Apple!" to player for 5 seconds
+                    play sound "ui.toast.challenge_complete" to player
+                    strike lightning effect at player
+                    broadcast "&8[&c&lKASINO&8] &b%player% &abaru aja mendapatkan &b&lSUPER JACKPOT &adi Gacha Kosmik!"
+
+                else if {_gacha_kosmik} is between 96 and 100:
+                    if name of current inventory of player is "&c&lKASINO KAZENO":
+                        set slot 24 of current inventory of player to nether star named "&d&lOMEGA WIN!!!"
+                    give 64 diamond blocks to player
+                    give 1 beacon to player
+                    give 1 netherite helmet named "&5&l👑 Mahkota Kazeno 👑" with lore "&7Peninggalan penguasa kasino." and "&c[OMEGA PRIZE]" to player
+                    send title "&d&lOMEGA WIN!!!" with subtitle "&aMahkota Kazeno + 64 Diamond Block + Beacon!" to player for 7 seconds
+                    play sound "ui.toast.challenge_complete" to player
+                    loop 5 times:
+                        strike lightning effect at player
+                        wait 5 ticks
+                    broadcast "&8[&c&lKASINO&8] &5&l🌌 OMEGA ALERT 🌌"
+                    broadcast "&8[&c&lKASINO&8] &b%player% &atelah menaklukkan alam semesta di &5Gacha Kosmik&a!"
+                    
+                wait 3 seconds
+                if name of current inventory of player is "&c&lKASINO KAZENO":
+                    set slot 24 of current inventory of player to netherite block named "&5&lGACHA KOSMIK" with lore "&7Biaya Spin: &51 Netherite Block" and "" and "&a&nPeluang Hadiah:" and "&c☠ Kehampaan &7(Hangus 1 Block)" and "&e⭐ Berkah &7(Dapat 2 Netherite Block)" and "&b💎 Super Jackpot &7(Trident + 32 God Apple)" and "&d&l🌌 OMEGA WIN &7(Mahkota Kazeno + 64 Diamond Block!)"
+                delete {judol::rolling::%player's uuid%}
+            else:
+                send "&cIni area khusus dewa! Lu butuh 1 Netherite Block ngab." to player
+                play sound "block.note_block.bass" to player
+
+# =======================================
+# ADMIN COMMAND: RESET COOLDOWN
+# =======================================
+command /resetjudol [<offline player>]:
+    permission: op
+    trigger:
+        if arg-1 is set:
+            delete {judol::daily::%arg-1's uuid%}
+            send "&aBerhasil mereset cooldown Gacha Harian untuk &e%arg-1%&a." to player
+        else:
+            send "&cGunakan: /resetjudol <player>" to player
+
+# =======================================
+# AUTO-BROADCAST PROMOSI KASINO
+# =======================================
+every 20 minutes:
+    broadcast "&8[&c&lKASINO&8] &aMerasa hoki hari ini? Temukan takdirmu di Kasino Kazeno dengan &e/judol"
